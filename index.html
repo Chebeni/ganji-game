@@ -1,170 +1,111 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Ganji</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
-
-    <style>
-      html, body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background: #000;
-        overflow: hidden;
-      }
-
-      /* The canvas will fill the browser (no white margins) */
-      #unity-canvas {
-        width: 100vw;
-        height: 100vh;
-        display: block;
-        background: #000;
-      }
-
-      /* Loading overlay */
-      #loading-overlay {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #000;
-        z-index: 9999;
-      }
-
-      #loading-inner {
-        width: min(520px, 90vw);
-        text-align: center;
-      }
-
-      #ganji-logo {
-        width: min(360px, 80vw);
-        height: auto;
-        margin: 0 auto 16px auto;
-        display: block;
-      }
-
-      #progress-outer {
-        width: 100%;
-        height: 12px;
-        border: 2px solid rgba(255,255,255,0.7);
-        border-radius: 999px;
-        overflow: hidden;
-        box-sizing: border-box;
-      }
-
-      #progress-inner {
-        width: 0%;
-        height: 100%;
-        background: rgba(255,255,255,0.9);
-        border-radius: 999px;
-        transition: width 0.1s linear;
-      }
-
-      /* Optional: a small fullscreen button */
-      #fs-btn {
-        position: fixed;
-        right: 12px;
-        bottom: 12px;
-        z-index: 10000;
-        padding: 8px 10px;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.35);
-        background: rgba(0,0,0,0.55);
-        color: white;
-        cursor: pointer;
-        display: none; /* shown after Unity loads */
-      }
-    </style>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity Web Player | Ganji</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="manifest" href="manifest.webmanifest">
   </head>
-
   <body>
-    <canvas id="unity-canvas" tabindex="-1"></canvas>
-
-    <!-- Loading UI (your logo + progress bar) -->
-    <div id="loading-overlay">
-      <div id="loading-inner">
-        <!-- Make sure the filename matches exactly -->
-        <img id="ganji-logo" src="TemplateData/GanjiLogo.png" alt="Ganji" />
-        <div id="progress-outer">
-          <div id="progress-inner"></div>
+    <div id="unity-container">
+      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
         </div>
       </div>
+      <div id="unity-warning"> </div>
     </div>
-
-    <button id="fs-btn">Fullscreen</button>
-
     <script>
-      const canvas = document.querySelector("#unity-canvas");
-      const overlay = document.querySelector("#loading-overlay");
-      const progressInner = document.querySelector("#progress-inner");
-      const fsBtn = document.querySelector("#fs-btn");
+      window.addEventListener("load", function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("ServiceWorker.js");
+        }
+      });
 
-      const buildUrl = "Build";
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var warningBanner = document.querySelector("#unity-warning");
 
-      // IMPORTANT:
-      // These MUST match your actual Build filenames.
-      // Yours looked like WebGL_ganji_game.* in your screenshot.
-      const loaderUrl = buildUrl + "/WebGL_ganji_game.loader.js";
-
-      const config = {
-        dataUrl: buildUrl + "/WebGL_ganji_game.data",
-        frameworkUrl: buildUrl + "/WebGL_ganji_game.framework.js",
-        codeUrl: buildUrl + "/WebGL_ganji_game.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "Ganji",
-        productVersion: "0.1.0",
-      };
-
-      // Mobile viewport fix
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        const meta = document.createElement("meta");
-        meta.name = "viewport";
-        meta.content = "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
-        document.getElementsByTagName("head")[0].appendChild(meta);
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
       }
 
-      let unityInstance = null;
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/WebGL_ganji_gameDec13.loader.js";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/WebGL_ganji_gameDec13.data",
+        frameworkUrl: buildUrl + "/WebGL_ganji_gameDec13.framework.js",
+        codeUrl: buildUrl + "/WebGL_ganji_gameDec13.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Ganji",
+        productName: "Ganji",
+        productVersion: "0.2.0",
+        showBanner: unityShowBanner,
+        // errorHandler: function(err, url, line) {
+        //    alert("error " + err + " occurred at line " + line);
+        //    // Return 'true' if you handled this error and don't want Unity
+        //    // to process it further, 'false' otherwise.
+        //    return true;
+        // },
+      };
 
-      const script = document.createElement("script");
+      // By default Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+      }
+
+
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
       script.src = loaderUrl;
-
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          progressInner.style.width = (progress * 100) + "%";
-        }).then((instance) => {
-          unityInstance = instance;
-
-          // Hide loading UI
-          overlay.style.display = "none";
-
-          // Enable fullscreen button
-          fsBtn.style.display = "block";
-          fsBtn.onclick = () => unityInstance.SetFullscreen(1);
-
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          loadingBar.style.display = "none";
         }).catch((message) => {
           alert(message);
         });
       };
-
       document.body.appendChild(script);
     </script>
   </body>
 </html>
-
-<!-- Social preview -->
-<meta property="og:title" content="Ganji" />
-<meta property="og:description" content="Play Ganji in your browser." />
-<meta property="og:image" content="TemplateData/ganji-preview.png" />
-<meta property="og:type" content="website" />
-
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Ganji" />
-<meta name="twitter:description" content="Play Ganji in your browser." />
-<meta name="twitter:image" content="TemplateData/ganji-preview.png" />
