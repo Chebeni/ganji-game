@@ -1,9 +1,9 @@
 const cacheName = "Ganji-Ganji-0.2.0";
 const contentToCache = [
-    "Build/WebGL_ganji_gameDec13.loader.js",
-    "Build/WebGL_ganji_gameDec13.framework.js",
-    "Build/WebGL_ganji_gameDec13.data",
-    "Build/WebGL_ganji_gameDec13.wasm",
+    "Build/WebGL_ganji_gameDec13-2.loader.js",
+    "Build/WebGL_ganji_gameDec13-2.framework.js",
+    "Build/WebGL_ganji_gameDec13-2.data",
+    "Build/WebGL_ganji_gameDec13-2.wasm",
     "TemplateData/style.css"
 
 ];
